@@ -1,412 +1,229 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 18,
-   "id": "3b6dd580",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import os\n",
-    "import pandas as pd\n",
-    "import numpy as np\n",
-    "import json\n",
-    "import io"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 19,
-   "id": "e0e9660f",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import matplotlib.pyplot as plt\n",
-    "import streamlit as st"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "id": "edf9b988",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Requirement already satisfied: protobuf==3.20.* in c:\\users\\user1\\anaconda3\\lib\\site-packages (3.20.3)\n",
-      "Note: you may need to restart the kernel to use updated packages.\n"
-     ]
-    },
-    {
-     "name": "stderr",
-     "output_type": "stream",
-     "text": [
-      "WARNING: Ignoring invalid distribution -rotobuf (c:\\users\\user1\\anaconda3\\lib\\site-packages)\n",
-      "WARNING: Ignoring invalid distribution -rotobuf (c:\\users\\user1\\anaconda3\\lib\\site-packages)\n",
-      "WARNING: Ignoring invalid distribution -rotobuf (c:\\users\\user1\\anaconda3\\lib\\site-packages)\n",
-      "WARNING: Ignoring invalid distribution -rotobuf (c:\\users\\user1\\anaconda3\\lib\\site-packages)\n",
-      "WARNING: Ignoring invalid distribution -rotobuf (c:\\users\\user1\\anaconda3\\lib\\site-packages)\n",
-      "WARNING: Ignoring invalid distribution -rotobuf (c:\\users\\user1\\anaconda3\\lib\\site-packages)\n"
-     ]
-    }
-   ],
-   "source": [
-    "pip install --upgrade protobuf==3.20.*"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 20,
-   "id": "033929fa",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import tensorflow as tf\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 21,
-   "id": "49cb1e24",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "from tensorflow.keras.models import Sequential\n",
-    "from tensorflow.keras.layers import Dense, Input\n",
-    "from tensorflow.keras.optimizers import Adam\n",
-    "from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score\n",
-    "import time, hashlib, json"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "6506579c",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "e15fccba",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 22,
-   "id": "14a68f56",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "# -------------------------------\n",
-    "# Blockchain Implementation\n",
-    "# -------------------------------\n",
-    "class Transaction:\n",
-    "    def __init__(self, device_id, model_update, timestamp=None, signature=None):\n",
-    "        self.device_id = device_id\n",
-    "        self.model_update = model_update\n",
-    "        self.timestamp = timestamp or time.time()\n",
-    "        self.signature = signature or self.sign_transaction()\n",
-    "    \n",
-    "    def sign_transaction(self):\n",
-    "        tx_str = f\"{self.device_id}{self.model_update}{self.timestamp}\"\n",
-    "        return hashlib.sha256(tx_str.encode()).hexdigest()\n",
-    "    \n",
-    "    def to_dict(self):\n",
-    "        return {\n",
-    "            \"device_id\": self.device_id,\n",
-    "            \"model_update\": self.model_update,\n",
-    "            \"timestamp\": self.timestamp,\n",
-    "            \"signature\": self.signature,\n",
-    "        }\n",
-    "\n",
-    "class Block:\n",
-    "    def __init__(self, index, transactions, previous_hash, timestamp=None, nonce=0):\n",
-    "        self.index = index\n",
-    "        self.transactions = transactions\n",
-    "        self.previous_hash = previous_hash\n",
-    "        self.timestamp = timestamp or time.time()\n",
-    "        self.nonce = nonce\n",
-    "        self.hash = self.compute_hash()\n",
-    "    \n",
-    "    def compute_hash(self):\n",
-    "        block_content = {\n",
-    "            \"index\": self.index,\n",
-    "            \"transactions\": [tx.to_dict() for tx in self.transactions],\n",
-    "            \"previous_hash\": self.previous_hash,\n",
-    "            \"timestamp\": self.timestamp,\n",
-    "            \"nonce\": self.nonce,\n",
-    "        }\n",
-    "        block_string = json.dumps(block_content, sort_keys=True)\n",
-    "        return hashlib.sha256(block_string.encode()).hexdigest()\n",
-    "\n",
-    "class Blockchain:\n",
-    "    def __init__(self, difficulty=2):\n",
-    "        self.unconfirmed_transactions = []\n",
-    "        self.chain = []\n",
-    "        self.difficulty = difficulty\n",
-    "        self.create_genesis_block()\n",
-    "    \n",
-    "    def create_genesis_block(self):\n",
-    "        genesis_block = Block(0, [], \"0\", time.time())\n",
-    "        genesis_block.hash = genesis_block.compute_hash()\n",
-    "        self.chain.append(genesis_block)\n",
-    "    \n",
-    "    def last_block(self):\n",
-    "        return self.chain[-1]\n",
-    "    \n",
-    "    def add_transaction(self, transaction):\n",
-    "        if self.verify_transaction(transaction):\n",
-    "            self.unconfirmed_transactions.append(transaction)\n",
-    "            return True\n",
-    "        return False\n",
-    "\n",
-    "    def verify_transaction(self, transaction):\n",
-    "        expected_signature = hashlib.sha256(\n",
-    "            f\"{transaction.device_id}{transaction.model_update}{transaction.timestamp}\".encode()\n",
-    "        ).hexdigest()\n",
-    "        return transaction.signature == expected_signature\n",
-    "    \n",
-    "    def proof_of_work(self, block):\n",
-    "        block.nonce = 0\n",
-    "        computed_hash = block.compute_hash()\n",
-    "        while not computed_hash.startswith('0' * self.difficulty):\n",
-    "            block.nonce += 1\n",
-    "            computed_hash = block.compute_hash()\n",
-    "        return computed_hash\n",
-    "    \n",
-    "    def add_block(self, block, proof):\n",
-    "        if self.last_block().hash != block.previous_hash:\n",
-    "            return False\n",
-    "        if not proof.startswith('0' * self.difficulty) or proof != block.compute_hash():\n",
-    "            return False\n",
-    "        self.chain.append(block)\n",
-    "        return True\n",
-    "    \n",
-    "    def mine(self):\n",
-    "        if not self.unconfirmed_transactions:\n",
-    "            return None\n",
-    "        new_block = Block(\n",
-    "            index=self.last_block().index + 1,\n",
-    "            transactions=self.unconfirmed_transactions,\n",
-    "            previous_hash=self.last_block().hash\n",
-    "        )\n",
-    "        proof = self.proof_of_work(new_block)\n",
-    "        self.add_block(new_block, proof)\n",
-    "        self.unconfirmed_transactions = []\n",
-    "        return new_block\n",
-    "\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 23,
-   "id": "8da81232",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "# -------------------------------\n",
-    "# Model Definition\n",
-    "# -------------------------------\n",
-    "def create_model(input_dim):\n",
-    "    model = Sequential([\n",
-    "        Input(shape=(input_dim,)),\n",
-    "        Dense(16, activation='relu'),\n",
-    "        Dense(1, activation='sigmoid')\n",
-    "    ])\n",
-    "    model.compile(optimizer=Adam(learning_rate=0.001), loss='binary_crossentropy', metrics=['accuracy'])\n",
-    "    return model\n",
-    "\n",
-    "# -------------------------------\n",
-    "# Training and Blockchain Storage\n",
-    "# -------------------------------\n",
-    "def train_and_store(dataset_list, num_epochs=3, batch_size=32):\n",
-    "    blockchain = Blockchain(difficulty=2)\n",
-    "    metrics = {\"Device\": [], \"Accuracy\": [], \"Precision\": [], \"Recall\": [], \"F1-Score\": [], \"AUC\": []}\n",
-    "\n",
-    "    for device_id, dataset in enumerate(dataset_list, start=1):\n",
-    "        df = pd.read_csv(dataset)\n",
-    "        df_numeric = df.select_dtypes(include=[np.number])\n",
-    "\n",
-    "        X = df_numeric.iloc[:, :-1].values.astype(np.float32)\n",
-    "        y = df_numeric.iloc[:, -1].values.astype(np.float32)\n",
-    "        X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0) + 1e-8)\n",
-    "\n",
-    "        input_dim = X.shape[1]\n",
-    "        model = create_model(input_dim)\n",
-    "        model.fit(X, y, epochs=num_epochs, batch_size=batch_size, verbose=0)\n",
-    "\n",
-    "        y_pred = (model.predict(X) > 0.5).astype(int)\n",
-    "        accuracy = accuracy_score(y, y_pred)\n",
-    "        precision = precision_score(y, y_pred, zero_division=1)\n",
-    "        recall = recall_score(y, y_pred, zero_division=1)\n",
-    "        f1 = f1_score(y, y_pred, zero_division=1)\n",
-    "        auc = roc_auc_score(y, y_pred)\n",
-    "\n",
-    "        metrics[\"Device\"].append(f\"Device {device_id}\")\n",
-    "        metrics[\"Accuracy\"].append(accuracy)\n",
-    "        metrics[\"Precision\"].append(precision)\n",
-    "        metrics[\"Recall\"].append(recall)\n",
-    "        metrics[\"F1-Score\"].append(f1)\n",
-    "        metrics[\"AUC\"].append(auc)\n",
-    "\n",
-    "        # Store model update in blockchain\n",
-    "        weights = model.get_weights()\n",
-    "        transaction = Transaction(device_id=f\"Device_{device_id}\", model_update={\"weights\": [w.tolist() for w in weights]})\n",
-    "        blockchain.add_transaction(transaction)\n",
-    "        blockchain.mine()\n",
-    "\n",
-    "    return metrics, blockchain\n",
-    "\n",
-    "# -------------------------------\n",
-    "# Streamlit UI\n",
-    "# -------------------------------\n",
-    "st.title(\"🔗 Federated Learning with Blockchain + Deep Learning Evaluation\")\n",
-    "\n",
-    "uploaded_files = st.file_uploader(\"Upload one or more CSV files\", type=[\"csv\"], accept_multiple_files=True)\n",
-    "\n",
-    "if uploaded_files:\n",
-    "    if st.button(\"🚀 Train & Evaluate\"):\n",
-    "        with st.spinner(\"Training models... please wait\"):\n",
-    "            metrics, blockchain = train_and_store(uploaded_files)\n",
-    "\n",
-    "        st.success(\"Training completed!\")\n",
-    "\n",
-    "        # Show metrics as table\n",
-    "        df_metrics = pd.DataFrame(metrics).set_index(\"Device\")\n",
-    "        st.subheader(\"📊 Model Performance Summary\")\n",
-    "        st.dataframe(df_metrics.style.highlight_max(axis=0))\n",
-    "\n",
-    "        # Plot metrics\n",
-    "        st.subheader(\"📈 Performance Visualization\")\n",
-    "        fig, ax = plt.subplots(figsize=(10, 5))\n",
-    "        for metric in [\"Accuracy\", \"Precision\", \"Recall\", \"F1-Score\", \"AUC\"]:\n",
-    "            ax.plot(metrics[\"Device\"], metrics[metric], marker=\"o\", label=metric)\n",
-    "        ax.set_xlabel(\"Devices\")\n",
-    "        ax.set_ylabel(\"Scores\")\n",
-    "        ax.set_title(\"Model Performance Across IIoT Devices\")\n",
-    "        ax.legend()\n",
-    "        st.pyplot(fig)\n",
-    "\n",
-    "        # Blockchain details\n",
-    "        st.subheader(\"⛓️ Blockchain Ledger\")\n",
-    "        for block in blockchain.chain:\n",
-    "            st.json({\n",
-    "                \"index\": block.index,\n",
-    "                \"hash\": block.hash,\n",
-    "                \"previous_hash\": block.previous_hash,\n",
-    "                \"transactions\": [tx.to_dict() for tx in block.transactions],\n",
-    "                \"timestamp\": block.timestamp\n",
-    "            })\n",
-    "\n",
-    "            \n",
-    "            \n",
-    "    \n",
-    "\n",
-    "# -------------------------------\n",
-    "# Streamlit UI\n",
-    "# -------------------------------\n",
-    "st.title(\"🔗 Federated Learning with Blockchain + Deep Learning Evaluation\")\n",
-    "\n",
-    "uploaded_files = st.file_uploader(\"Upload one or more CSV files\", type=[\"csv\"], accept_multiple_files=True)\n",
-    "\n",
-    "if uploaded_files:\n",
-    "    if st.button(\"🚀 Train & Evaluate\"):\n",
-    "        with st.spinner(\"Training models... please wait\"):\n",
-    "            metrics, blockchain = train_and_store(uploaded_files)\n",
-    "\n",
-    "        st.success(\"Training completed!\")\n",
-    "\n",
-    "        # Show metrics as table\n",
-    "        df_metrics = pd.DataFrame(metrics).set_index(\"Device\")\n",
-    "        st.subheader(\"📊 Model Performance Summary\")\n",
-    "        st.dataframe(df_metrics.style.highlight_max(axis=0))\n",
-    "\n",
-    "        # 📥 Download Metrics as CSV\n",
-    "        csv_buffer = io.StringIO()\n",
-    "        df_metrics.to_csv(csv_buffer)\n",
-    "        st.download_button(\n",
-    "            label=\"⬇️ Download Metrics (CSV)\",\n",
-    "            data=csv_buffer.getvalue(),\n",
-    "            file_name=\"model_metrics.csv\",\n",
-    "            mime=\"text/csv\"\n",
-    "        )\n",
-    "\n",
-    "        # Plot metrics\n",
-    "        st.subheader(\"📈 Performance Visualization\")\n",
-    "        fig, ax = plt.subplots(figsize=(10, 5))\n",
-    "        for metric in [\"Accuracy\", \"Precision\", \"Recall\", \"F1-Score\", \"AUC\"]:\n",
-    "            ax.plot(metrics[\"Device\"], metrics[metric], marker=\"o\", label=metric)\n",
-    "        ax.set_xlabel(\"Devices\")\n",
-    "        ax.set_ylabel(\"Scores\")\n",
-    "        ax.set_title(\"Model Performance Across IIoT Devices\")\n",
-    "        ax.legend()\n",
-    "        st.pyplot(fig)\n",
-    "\n",
-    "        # Blockchain details\n",
-    "        st.subheader(\"⛓️ Blockchain Ledger\")\n",
-    "        blockchain_data = []\n",
-    "        for block in blockchain.chain:\n",
-    "            block_dict = {\n",
-    "                \"index\": block.index,\n",
-    "                \"hash\": block.hash,\n",
-    "                \"previous_hash\": block.previous_hash,\n",
-    "                \"transactions\": [tx.to_dict() for tx in block.transactions],\n",
-    "                \"timestamp\": block.timestamp\n",
-    "            }\n",
-    "            blockchain_data.append(block_dict)\n",
-    "            st.json(block_dict)\n",
-    "\n",
-    "        # 📥 Download Blockchain as JSON\n",
-    "        st.download_button(\n",
-    "            label=\"⬇️ Download Blockchain Ledger (JSON)\",\n",
-    "            data=json.dumps(blockchain_data, indent=4),\n",
-    "            file_name=\"blockchain_ledger.json\",\n",
-    "            mime=\"application/json\"\n",
-    "        )\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "696d1230",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "2389395e",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.9.13"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+# app.py
+
+import os
+import pandas as pd
+import numpy as np
+import json
+import io
+import matplotlib.pyplot as plt
+import streamlit as st
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Input
+from tensorflow.keras.optimizers import Adam
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+import time, hashlib
+
+# -------------------------------
+# Blockchain Implementation
+# -------------------------------
+class Transaction:
+    def __init__(self, device_id, model_update, timestamp=None, signature=None):
+        self.device_id = device_id
+        self.model_update = model_update
+        self.timestamp = timestamp or time.time()
+        self.signature = signature or self.sign_transaction()
+    
+    def sign_transaction(self):
+        tx_str = f"{self.device_id}{self.model_update}{self.timestamp}"
+        return hashlib.sha256(tx_str.encode()).hexdigest()
+    
+    def to_dict(self):
+        return {
+            "device_id": self.device_id,
+            "model_update": self.model_update,
+            "timestamp": self.timestamp,
+            "signature": self.signature,
+        }
+
+class Block:
+    def __init__(self, index, transactions, previous_hash, timestamp=None, nonce=0):
+        self.index = index
+        self.transactions = transactions
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp or time.time()
+        self.nonce = nonce
+        self.hash = self.compute_hash()
+    
+    def compute_hash(self):
+        block_content = {
+            "index": self.index,
+            "transactions": [tx.to_dict() for tx in self.transactions],
+            "previous_hash": self.previous_hash,
+            "timestamp": self.timestamp,
+            "nonce": self.nonce,
+        }
+        block_string = json.dumps(block_content, sort_keys=True)
+        return hashlib.sha256(block_string.encode()).hexdigest()
+
+class Blockchain:
+    def __init__(self, difficulty=2):
+        self.unconfirmed_transactions = []
+        self.chain = []
+        self.difficulty = difficulty
+        self.create_genesis_block()
+    
+    def create_genesis_block(self):
+        genesis_block = Block(0, [], "0", time.time())
+        genesis_block.hash = genesis_block.compute_hash()
+        self.chain.append(genesis_block)
+    
+    def last_block(self):
+        return self.chain[-1]
+    
+    def add_transaction(self, transaction):
+        if self.verify_transaction(transaction):
+            self.unconfirmed_transactions.append(transaction)
+            return True
+        return False
+
+    def verify_transaction(self, transaction):
+        expected_signature = hashlib.sha256(
+            f"{transaction.device_id}{transaction.model_update}{transaction.timestamp}".encode()
+        ).hexdigest()
+        return transaction.signature == expected_signature
+    
+    def proof_of_work(self, block):
+        block.nonce = 0
+        computed_hash = block.compute_hash()
+        while not computed_hash.startswith('0' * self.difficulty):
+            block.nonce += 1
+            computed_hash = block.compute_hash()
+        return computed_hash
+    
+    def add_block(self, block, proof):
+        if self.last_block().hash != block.previous_hash:
+            return False
+        if not proof.startswith('0' * self.difficulty) or proof != block.compute_hash():
+            return False
+        self.chain.append(block)
+        return True
+    
+    def mine(self):
+        if not self.unconfirmed_transactions:
+            return None
+        new_block = Block(
+            index=self.last_block().index + 1,
+            transactions=self.unconfirmed_transactions,
+            previous_hash=self.last_block().hash
+        )
+        proof = self.proof_of_work(new_block)
+        self.add_block(new_block, proof)
+        self.unconfirmed_transactions = []
+        return new_block
+
+# -------------------------------
+# Model Definition
+# -------------------------------
+def create_model(input_dim):
+    model = Sequential([
+        Input(shape=(input_dim,)),
+        Dense(16, activation='relu'),
+        Dense(1, activation='sigmoid')
+    ])
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='binary_crossentropy', metrics=['accuracy'])
+    return model
+
+# -------------------------------
+# Training and Blockchain Storage
+# -------------------------------
+def train_and_store(dataset_list, num_epochs=3, batch_size=32):
+    blockchain = Blockchain(difficulty=2)
+    metrics = {"Device": [], "Accuracy": [], "Precision": [], "Recall": [], "F1-Score": [], "AUC": []}
+
+    for device_id, dataset in enumerate(dataset_list, start=1):
+        df = pd.read_csv(dataset)
+        df_numeric = df.select_dtypes(include=[np.number])
+
+        X = df_numeric.iloc[:, :-1].values.astype(np.float32)
+        y = df_numeric.iloc[:, -1].values.astype(np.float32)
+        X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0) + 1e-8)
+
+        input_dim = X.shape[1]
+        model = create_model(input_dim)
+        model.fit(X, y, epochs=num_epochs, batch_size=batch_size, verbose=0)
+
+        y_pred = (model.predict(X) > 0.5).astype(int)
+        accuracy = accuracy_score(y, y_pred)
+        precision = precision_score(y, y_pred, zero_division=1)
+        recall = recall_score(y, y_pred, zero_division=1)
+        f1 = f1_score(y, y_pred, zero_division=1)
+        auc = roc_auc_score(y, y_pred)
+
+        metrics["Device"].append(f"Device {device_id}")
+        metrics["Accuracy"].append(accuracy)
+        metrics["Precision"].append(precision)
+        metrics["Recall"].append(recall)
+        metrics["F1-Score"].append(f1)
+        metrics["AUC"].append(auc)
+
+        # Store model update in blockchain
+        weights = model.get_weights()
+        transaction = Transaction(device_id=f"Device_{device_id}", model_update={"weights": [w.tolist() for w in weights]})
+        blockchain.add_transaction(transaction)
+        blockchain.mine()
+
+    return metrics, blockchain
+
+# -------------------------------
+# Streamlit UI
+# -------------------------------
+st.set_page_config(page_title="Federated Learning + Blockchain", layout="wide")
+st.title("🔗 Federated Learning with Blockchain + Deep Learning Evaluation")
+
+uploaded_files = st.file_uploader("Upload one or more CSV files", type=["csv"], accept_multiple_files=True)
+
+if uploaded_files:
+    if st.button("🚀 Train & Evaluate"):
+        with st.spinner("Training models... please wait"):
+            metrics, blockchain = train_and_store(uploaded_files)
+
+        st.success("✅ Training completed!")
+
+        # Show metrics as table
+        df_metrics = pd.DataFrame(metrics).set_index("Device")
+        st.subheader("📊 Model Performance Summary")
+        st.dataframe(df_metrics.style.highlight_max(axis=0))
+
+        # 📥 Download Metrics as CSV
+        csv_buffer = io.StringIO()
+        df_metrics.to_csv(csv_buffer)
+        st.download_button(
+            label="⬇️ Download Metrics (CSV)",
+            data=csv_buffer.getvalue(),
+            file_name="model_metrics.csv",
+            mime="text/csv"
+        )
+
+        # Plot metrics
+        st.subheader("📈 Performance Visualization")
+        fig, ax = plt.subplots(figsize=(10, 5))
+        for metric in ["Accuracy", "Precision", "Recall", "F1-Score", "AUC"]:
+            ax.plot(metrics["Device"], metrics[metric], marker="o", label=metric)
+        ax.set_xlabel("Devices")
+        ax.set_ylabel("Scores")
+        ax.set_title("Model Performance Across IIoT Devices")
+        ax.legend()
+        st.pyplot(fig)
+
+        # Blockchain details
+        st.subheader("⛓️ Blockchain Ledger")
+        blockchain_data = []
+        for block in blockchain.chain:
+            block_dict = {
+                "index": block.index,
+                "hash": block.hash,
+                "previous_hash": block.previous_hash,
+                "transactions": [tx.to_dict() for tx in block.transactions],
+                "timestamp": block.timestamp
+            }
+            blockchain_data.append(block_dict)
+            st.json(block_dict)
+
+        # 📥 Download Blockchain as JSON
+        st.download_button(
+            label="⬇️ Download Blockchain Ledger (JSON)",
+            data=json.dumps(blockchain_data, indent=4),
+            file_name="blockchain_ledger.json",
+            mime="application/json"
+        )
